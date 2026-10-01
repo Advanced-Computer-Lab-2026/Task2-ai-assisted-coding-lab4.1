@@ -5,7 +5,7 @@ const createSchema = Joi.object({
   sessionCode: Joi.string().required(),
   score: Joi.number().min(1).max(5).required(),
   comment: Joi.string().optional(),
-  evaluatedBy: Joi.string().hex().length(24).required()
+  evaluatedBy: Joi.string().hex().length(24).optional()
 });
 
 // GET /api/evaluations
