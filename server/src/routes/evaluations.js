@@ -1,13 +1,20 @@
-import { Router } from 'express';
+import express from 'express';
 import {
+  createEvaluation,
   getAllEvaluations,
   getEvaluation,
-  createEvaluation,
-  getEvaluationSummary
+  getEvaluationSummary,
 } from '../controllers/evaluationController.js';
 
-const router = Router();
+const router = express.Router();
 
-// TODO: wire up the three routes in README.md section 2 and the summary route in section 3.
+// The /summary route MUST be defined at the very top. 
+// If it was at the bottom, Express would think the word "summary" is actually an ID!
+router.get('/summary', getEvaluationSummary);
+
+// Map the HTTP methods (POST, GET) and URLs to their matching brain functions
+router.post('/', createEvaluation);
+router.get('/', getAllEvaluations);
+router.get('/:id', getEvaluation);
 
 export default router;
