@@ -1,10 +1,18 @@
 import { Evaluation } from '../models/Evaluation.js';
+import Joi from 'joi';
 
-// GET /api/evaluations
+const createSchema = Joi.object({
+  sessionCode: Joi.string().required(),
+  score: Joi.number().min(1).max(5).required(),
+  comment: Joi.string().optional(),
+  evaluatedBy: Joi.string().hex().length(24).optional()
+});
+
 // TODO: implement per README.md section 2.
 export async function getAllEvaluations(req, res, next) {
   try {
-    // TODO
+    const evaluations = await Evaluation.find().sort({ createdAt: -1 });
+    res.json({ evaluations });
   } catch (err) { next(err); }
 }
 
@@ -12,7 +20,9 @@ export async function getAllEvaluations(req, res, next) {
 // TODO: implement per README.md section 2.
 export async function getEvaluation(req, res, next) {
   try {
-    // TODO
+    const evaluation = await Evaluation.findById(req.params.id);
+    if (!evaluation) return res.status(404).json({ message: 'Evaluation not found' });
+    res.json({ evaluation });
   } catch (err) { next(err); }
 }
 
@@ -20,7 +30,11 @@ export async function getEvaluation(req, res, next) {
 // TODO: implement per README.md section 2.
 export async function createEvaluation(req, res, next) {
   try {
-    // TODO
+  const { value, error } = createSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.message });
+
+    const evaluation = await Evaluation.create(value);
+    res.status(201).json({ evaluation });
   } catch (err) { next(err); }
 }
 
@@ -28,6 +42,26 @@ export async function createEvaluation(req, res, next) {
 // TODO: implement per README.md section 3.
 export async function getEvaluationSummary(req, res, next) {
   try {
-    // TODO
+    const { sessionCode } = req.query;
+    if (!sessionCode) {
+      return res.status(400).json({ message: 'sessionCode is required' });
+    }
+
+    const [result] = await Evaluation.aggregate([
+      { $match: { sessionCode } },
+      {
+        $group: {
+          _id: '$sessionCode',
+          averageScore: { $avg: '$score' },
+          evaluationCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      sessionCode,
+      averageScore: result ? result.averageScore : 0,
+      evaluationCount: result ? result.evaluationCount : 0
+    });
   } catch (err) { next(err); }
 }
