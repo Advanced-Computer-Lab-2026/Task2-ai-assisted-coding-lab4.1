@@ -1,7 +1,7 @@
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
-import evaluationRoutes from './routes/evaluations.js';
+import reviewRoutes from './routes/reviews.js';
 import userRoutes from './routes/users.js';
 
 const app = express();
@@ -12,7 +12,7 @@ app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);
 
 // Not found

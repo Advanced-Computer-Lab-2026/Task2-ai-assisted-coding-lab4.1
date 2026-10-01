@@ -4,10 +4,10 @@ import { jest } from '@jest/globals';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import app from '../src/app.js';
-import { Evaluation } from '../src/models/Evaluation.js';
+import { Review } from '../src/models/Review.js';
 import { graded, printReport } from './rubric.js';
 
-const BASE = '/api/evaluations';
+const BASE = '/api/reviews';
 const REQUEST_TIMEOUT_MS = 5000;
 
 // Each run uses its own throwaway database on the MONGO_URI cluster, so parallel
@@ -41,7 +41,7 @@ beforeAll(async () => {
   if (!process.env.MONGO_URI) throw new Error('MONGO_URI is not set (see README "Database connection")');
   await mongoose.connect(process.env.MONGO_URI, { dbName: RUN_DB, autoIndex: true, maxPoolSize: 2 });
   await sweepStaleRunDatabases().catch((err) => console.warn('Stale grade_ database sweep skipped:', err.message));
-  await Evaluation.init();
+  await Review.init();
 }, 60000);
 
 beforeEach(async () => {
@@ -70,11 +70,11 @@ const newId = () => new mongoose.Types.ObjectId().toString();
 const idOf = (doc) => String(doc?._id ?? doc?.id);
 
 function seed(overrides = {}) {
-  return Evaluation.create({
-    sessionCode: 'SS101',
-    score: 4,
+  return Review.create({
+    facilityCode: 'FC101',
+    rating: 4,
     comment: 'Seeded entry',
-    evaluatedBy: newId(),
+    reviewedBy: newId(),
     ...overrides
   });
 }
@@ -87,33 +87,33 @@ function numericOption(path, key) {
 // ---------- graded checks ----------
 
 graded('model_fields', async () => {
-  const schema = Evaluation.schema;
+  const schema = Review.schema;
   const own = Object.keys(schema.paths)
     .filter((p) => !['_id', '__v', 'createdAt', 'updatedAt'].includes(p))
     .sort();
-  expect(own).toEqual(['sessionCode', 'score', 'comment', 'evaluatedBy'].sort());
-  expect(schema.path('sessionCode').instance).toBe('String');
-  expect(schema.path('score').instance).toBe('Number');
+  expect(own).toEqual(['facilityCode', 'rating', 'comment', 'reviewedBy'].sort());
+  expect(schema.path('facilityCode').instance).toBe('String');
+  expect(schema.path('rating').instance).toBe('Number');
   expect(schema.path('comment').instance).toBe('String');
-  expect(schema.path('evaluatedBy').instance).toBe('ObjectId');
-  expect(schema.path('evaluatedBy').options.ref).toBe('User');
+  expect(schema.path('reviewedBy').instance).toBe('ObjectId');
+  expect(schema.path('reviewedBy').options.ref).toBe('User');
 });
 
 graded('model_rules', async () => {
-  const schema = Evaluation.schema;
-  expect(schema.path('sessionCode')?.isRequired).toBe(true);
+  const schema = Review.schema;
+  expect(schema.path('facilityCode')?.isRequired).toBe(true);
 
-  const score = schema.path('score');
-  expect(score?.isRequired).toBe(true);
-  expect(numericOption(score, 'min')).toBe(1);
-  expect(numericOption(score, 'max')).toBe(5);
+  const rating = schema.path('rating');
+  expect(rating?.isRequired).toBe(true);
+  expect(numericOption(rating, 'min')).toBe(1);
+  expect(numericOption(rating, 'max')).toBe(5);
 
   expect(Boolean(schema.path('comment')?.isRequired)).toBe(false);
-  expect(Boolean(schema.path('evaluatedBy')?.isRequired)).toBe(false);
+  expect(Boolean(schema.path('reviewedBy')?.isRequired)).toBe(false);
 });
 
 graded('unique_index', async () => {
-  const schema = Evaluation.schema;
+  const schema = Review.schema;
   expect(schema.path('createdAt')).toBeDefined();
   expect(schema.path('updatedAt')).toBeDefined();
 
@@ -121,39 +121,39 @@ graded('unique_index', async () => {
     .indexes()
     .filter(([fields, options]) => Object.keys(fields).length > 1 && options?.unique === true);
   expect(compoundUnique).toHaveLength(1);
-  expect(compoundUnique[0][0]).toEqual({ sessionCode: 1, evaluatedBy: 1 });
+  expect(compoundUnique[0][0]).toEqual({ facilityCode: 1, reviewedBy: 1 });
 });
 
 graded('create', async () => {
   const payload = {
-    sessionCode: 'SS101',
-    score: 4,
+    facilityCode: 'FC101',
+    rating: 4,
     comment: 'Clear and useful',
-    evaluatedBy: newId()
+    reviewedBy: newId()
   };
   const res = await api.post(BASE, payload);
   expect(res.status).toBe(201);
-  expect(res.body.evaluation).toBeDefined();
-  expect(res.body.evaluation.sessionCode).toBe('SS101');
-  expect(res.body.evaluation.score).toBe(4);
+  expect(res.body.review).toBeDefined();
+  expect(res.body.review.facilityCode).toBe('FC101');
+  expect(res.body.review.rating).toBe(4);
 
-  const stored = await Evaluation.findById(idOf(res.body.evaluation)).lean();
+  const stored = await Review.findById(idOf(res.body.review)).lean();
   expect(stored).not.toBeNull();
-  expect(stored.sessionCode).toBe('SS101');
-  expect(stored.score).toBe(4);
+  expect(stored.facilityCode).toBe('FC101');
+  expect(stored.rating).toBe(4);
   expect(stored.comment).toBe('Clear and useful');
-  expect(String(stored.evaluatedBy)).toBe(payload.evaluatedBy);
+  expect(String(stored.reviewedBy)).toBe(payload.reviewedBy);
 });
 
 graded('list', async () => {
-  const a = await seed({ score: 5 });
-  const b = await seed({ sessionCode: 'SS202', score: 2 });
+  const a = await seed({ rating: 5 });
+  const b = await seed({ facilityCode: 'FC202', rating: 2 });
 
   const res = await api.get(BASE);
   expect(res.status).toBe(200);
-  expect(Array.isArray(res.body.evaluations)).toBe(true);
-  expect(res.body.evaluations).toHaveLength(2);
-  const ids = res.body.evaluations.map(idOf).sort();
+  expect(Array.isArray(res.body.reviews)).toBe(true);
+  expect(res.body.reviews).toHaveLength(2);
+  const ids = res.body.reviews.map(idOf).sort();
   expect(ids).toEqual([a._id.toString(), b._id.toString()].sort());
 });
 
@@ -162,30 +162,30 @@ graded('get_one', async () => {
 
   const res = await api.get(`${BASE}/${doc._id}`);
   expect(res.status).toBe(200);
-  expect(idOf(res.body.evaluation)).toBe(doc._id.toString());
-  expect(res.body.evaluation.sessionCode).toBe('SS101');
+  expect(idOf(res.body.review)).toBe(doc._id.toString());
+  expect(res.body.review.facilityCode).toBe('FC101');
 
   const missing = await api.get(`${BASE}/${newId()}`);
   expect(missing.status).toBe(404);
-  expect(missing.body).toEqual({ message: 'Evaluation not found' });
+  expect(missing.body).toEqual({ message: 'Review not found' });
 });
 
 graded('summary', async () => {
-  await seed({ score: 5 });
-  await seed({ score: 4 });
-  await seed({ score: 3 });
-  await seed({ sessionCode: 'SS202', score: 1 });
+  await seed({ rating: 5 });
+  await seed({ rating: 4 });
+  await seed({ rating: 3 });
+  await seed({ facilityCode: 'FC202', rating: 1 });
 
-  const spy = jest.spyOn(Evaluation, 'aggregate');
+  const spy = jest.spyOn(Review, 'aggregate');
   try {
-    const res = await api.get(`${BASE}/summary?sessionCode=SS101`);
+    const res = await api.get(`${BASE}/summary?facilityCode=FC101`);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ sessionCode: 'SS101', averageScore: 4, evaluationCount: 3 });
+    expect(res.body).toEqual({ facilityCode: 'FC101', averageRating: 4, reviewCount: 3 });
     expect(spy).toHaveBeenCalled();
 
-    const empty = await api.get(`${BASE}/summary?sessionCode=SS999`);
+    const empty = await api.get(`${BASE}/summary?facilityCode=FC999`);
     expect(empty.status).toBe(200);
-    expect(empty.body).toEqual({ sessionCode: 'SS999', averageScore: 0, evaluationCount: 0 });
+    expect(empty.body).toEqual({ facilityCode: 'FC999', averageRating: 0, reviewCount: 0 });
   } finally {
     spy.mockRestore();
   }
@@ -195,11 +195,11 @@ graded('summary_query', async () => {
   await seed();
 
   // /summary must be its own route, not swallowed by /:id.
-  const summary = await api.get(`${BASE}/summary?sessionCode=SS101`);
+  const summary = await api.get(`${BASE}/summary?facilityCode=FC101`);
   expect(summary.status).toBe(200);
-  expect(summary.body.sessionCode).toBe('SS101');
+  expect(summary.body.facilityCode).toBe('FC101');
 
   const noQuery = await api.get(`${BASE}/summary`);
   expect(noQuery.status).toBe(400);
-  expect(noQuery.body).toEqual({ message: 'sessionCode is required' });
+  expect(noQuery.body).toEqual({ message: 'facilityCode is required' });
 });
