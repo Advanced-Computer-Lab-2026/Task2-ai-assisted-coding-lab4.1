@@ -4,7 +4,28 @@ import mongoose from 'mongoose';
 
 const evaluationSchema = new mongoose.Schema(
   {
-    // TODO
+    sessionCode: {
+      type: String,
+      required: true
+    },
+
+    score: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+
+    comment: {
+      type: String,
+      required: false
+    },
+
+    evaluatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: false
+    }
   },
   { timestamps: true }
 );
