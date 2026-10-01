@@ -1,33 +1,92 @@
-import { Evaluation } from '../models/Evaluation.js';
+import mongoose from 'mongoose';
+import Evaluation from '../models/Evaluation.js';
 
-// GET /api/evaluations
-// TODO: implement per README.md section 2.
-export async function getAllEvaluations(req, res, next) {
+export const createEvaluation = async (req, res, next) => {
   try {
-    // TODO
-  } catch (err) { next(err); }
-}
+    const { sessionCode, score, comment, evaluatedBy } = req.body;
 
-// GET /api/evaluations/:id
-// TODO: implement per README.md section 2.
-export async function getEvaluation(req, res, next) {
-  try {
-    // TODO
-  } catch (err) { next(err); }
-}
+    const evaluation = await Evaluation.create({
+      sessionCode,
+      score,
+      comment,
+      evaluatedBy,
+    });
 
-// POST /api/evaluations
-// TODO: implement per README.md section 2.
-export async function createEvaluation(req, res, next) {
-  try {
-    // TODO
-  } catch (err) { next(err); }
-}
+    return res.status(201).json({ evaluation });
+  } catch (err) {
+    if (err.name === 'ValidationError' || err.name === 'CastError') {
+      return res.status(400).json({ message: err.message });
+    }
 
-// GET /api/evaluations/summary?sessionCode=SS101
-// TODO: implement per README.md section 3.
-export async function getEvaluationSummary(req, res, next) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        message: 'Evaluation already exists for this session and evaluator',
+      });
+    }
+
+    return next(err);
+  }
+};
+
+export const getAllEvaluations = async (req, res, next) => {
   try {
-    // TODO
-  } catch (err) { next(err); }
-}
+    const evaluations = await Evaluation.find();
+
+    return res.status(200).json({ evaluations });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const getEvaluation = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        message: 'Invalid evaluation id',
+      });
+    }
+
+    const evaluation = await Evaluation.findById(req.params.id);
+
+    if (!evaluation) {
+      return res.status(404).json({
+        message: 'Evaluation not found',
+      });
+    }
+
+    return res.status(200).json({ evaluation });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const getEvaluationSummary = async (req, res, next) => {
+  try {
+    const { sessionCode } = req.query;
+
+    if (typeof sessionCode !== 'string' || !sessionCode) {
+      return res.status(400).json({
+        message: 'sessionCode is required',
+      });
+    }
+
+    const [result] = await Evaluation.aggregate([
+      { $match: { sessionCode } },
+      {
+        $group: {
+          _id: null,
+          averageScore: { $avg: '$score' },
+          evaluationCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      sessionCode,
+      averageScore: result ? result.averageScore : 0,
+      evaluationCount: result ? result.evaluationCount : 0,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
