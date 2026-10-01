@@ -1,33 +1,74 @@
+import Joi from 'joi';
+import mongoose from 'mongoose';
 import { Evaluation } from '../models/Evaluation.js';
 
+const objectId = Joi.string().hex().length(24);
+
+const createSchema = Joi.object({
+  sessionCode: Joi.string().trim().min(1).max(50).required(),
+  score: Joi.number().min(1).max(5).required(),
+  comment: Joi.string().trim().allow('').max(2000),
+  evaluatedBy: objectId
+});
+
 // GET /api/evaluations
-// TODO: implement per README.md section 2.
 export async function getAllEvaluations(req, res, next) {
   try {
-    // TODO
+    const evaluations = await Evaluation.find().sort({ createdAt: -1 });
+    res.json({ evaluations });
   } catch (err) { next(err); }
 }
 
 // GET /api/evaluations/:id
-// TODO: implement per README.md section 2.
 export async function getEvaluation(req, res, next) {
   try {
-    // TODO
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid evaluation id' });
+    }
+    const evaluation = await Evaluation.findById(req.params.id);
+    if (!evaluation) return res.status(404).json({ message: 'Evaluation not found' });
+    res.json({ evaluation });
   } catch (err) { next(err); }
 }
 
 // POST /api/evaluations
-// TODO: implement per README.md section 2.
 export async function createEvaluation(req, res, next) {
   try {
-    // TODO
-  } catch (err) { next(err); }
+    const { value, error } = createSchema.validate(req.body ?? {}, { stripUnknown: true });
+    if (error) return res.status(400).json({ message: error.message });
+
+    const evaluation = await Evaluation.create(value);
+    res.status(201).json({ evaluation });
+  } catch (err) {
+    if (err?.code === 11000) {
+      return res.status(409).json({ message: 'You have already evaluated this session' });
+    }
+    if (err?.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
+    }
+    next(err);
+  }
 }
 
 // GET /api/evaluations/summary?sessionCode=SS101
-// TODO: implement per README.md section 3.
 export async function getEvaluationSummary(req, res, next) {
   try {
-    // TODO
+    const { sessionCode } = req.query;
+    // A repeated parameter arrives as an array; treat it like a missing value.
+    if (typeof sessionCode !== 'string' || !sessionCode.trim()) {
+      return res.status(400).json({ message: 'sessionCode is required' });
+    }
+    const code = sessionCode.trim();
+
+    const [result] = await Evaluation.aggregate([
+      { $match: { sessionCode: code } },
+      { $group: { _id: '$sessionCode', averageScore: { $avg: '$score' }, evaluationCount: { $sum: 1 } } }
+    ]);
+
+    res.json({
+      sessionCode: code,
+      averageScore: result?.averageScore ?? 0,
+      evaluationCount: result?.evaluationCount ?? 0
+    });
   } catch (err) { next(err); }
 }
