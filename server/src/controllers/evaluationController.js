@@ -1,33 +1,55 @@
-import { Evaluation } from '../models/Evaluation.js';
+import { Evaluation } from "../models/Evaluation.js";
+import mongoose from "mongoose";
 
 // GET /api/evaluations
-// TODO: implement per README.md section 2.
 export async function getAllEvaluations(req, res, next) {
   try {
-    // TODO
-  } catch (err) { next(err); }
+    const evaluations = await Evaluation.find();
+
+    res.status(200).json({
+      evaluations,
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 // GET /api/evaluations/:id
-// TODO: implement per README.md section 2.
 export async function getEvaluation(req, res, next) {
   try {
-    // TODO
-  } catch (err) { next(err); }
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({
+        message: "Evaluation not found",
+      });
+    }
+
+    const evaluation = await Evaluation.findById(id);
+
+    if (!evaluation) {
+      return res.status(404).json({
+        message: "Evaluation not found",
+      });
+    }
+
+    res.status(200).json({
+      evaluation,
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 // POST /api/evaluations
-// TODO: implement per README.md section 2.
 export async function createEvaluation(req, res, next) {
   try {
-    // TODO
-  } catch (err) { next(err); }
-}
+    const evaluation = await Evaluation.create(req.body);
 
-// GET /api/evaluations/summary?sessionCode=SS101
-// TODO: implement per README.md section 3.
-export async function getEvaluationSummary(req, res, next) {
-  try {
-    // TODO
-  } catch (err) { next(err); }
+    res.status(201).json({
+      evaluation,
+    });
+  } catch (err) {
+    next(err);
+  }
 }
