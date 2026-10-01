@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import {
   getAllEvaluations,
   getEvaluation,
@@ -8,6 +9,16 @@ import {
 
 const router = Router();
 
-// TODO: wire up the three routes in README.md section 2 and the summary route in section 3.
+// POST /api/evaluations
+router.post('/', createEvaluation);
+
+// GET /api/evaluations
+router.get('/', getAllEvaluations);
+
+// GET /api/evaluations/:id
+router.get('/:id', getEvaluation);
+
+// GET /api/evaluations/summary
+router.get('/summary', getEvaluationSummary);
 
 export default router;
