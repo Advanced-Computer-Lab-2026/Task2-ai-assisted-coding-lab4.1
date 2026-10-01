@@ -50,7 +50,22 @@ All of your work goes in three files: `server/src/models/Evaluation.js`,
 | field | type | rules |
 |---|---|---|
 | `sessionCode` | String | required (e.g. `"SS101"`) |
+| `score` | NumberAll of your work goes in three files: `server/src/models/Evaluation.js`,
+`server/src/controllers/evaluationController.js` and
+`server/src/routes/evaluations.js`.
+
+### 1. The `Evaluation` model — `server/src/models/Evaluation.js`
+
+| field | type | rules |
+|---|---|---|
+| `sessionCode` | String | required (e.g. `"SS101"`) |
 | `score` | Number | required, `min: 1`, `max: 5` |
+| `comment` | String | optional |
+| `evaluatedBy` | ObjectId ref `User` | optional |
+
+Keep `{ timestamps: true }` and add a **compound unique index** on
+`{ sessionCode: 1, evaluatedBy: 1 }`.
+ | required, `min: 1`, `max: 5` |
 | `comment` | String | optional |
 | `evaluatedBy` | ObjectId ref `User` | optional |
 

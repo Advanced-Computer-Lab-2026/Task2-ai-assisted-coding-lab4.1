@@ -5,7 +5,7 @@ const createSchema = Joi.object({
   sessionCode: Joi.string().required(),
   score: Joi.number().min(1).max(5).required(),
   comment: Joi.string().optional(),
-  evaluatedBy: Joi.string().hex().length(24).optional()
+  evaluatedBy: Joi.string().hex().length(24).required()
 });
 
 // GET /api/evaluations
@@ -33,7 +33,12 @@ export async function createEvaluation(req, res, next) {
 
     const evaluation = await Evaluation.create(value);
     res.status(201).json({ evaluation });
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ message: 'You have already evaluated this session.' });
+    }
+    next(err);
+  }
 }
 
 // GET /api/evaluations/summary?sessionCode=SS101
